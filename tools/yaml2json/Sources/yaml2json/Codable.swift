@@ -9,9 +9,32 @@ import Foundation
 import Yams
 
 // MARK: - Decodable types
+// MARK: - Codable
+private struct SessionKey: CodingKey {
+    var stringValue: String
 
+    var intValue: Int? { return nil}
+
+    init?(intValue: Int) {
+        return nil
+    }
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+    }
+}
+
+private enum CodingKeys: String, CodingKey {
+    case title = ":title", description = ":description", track = ":track"
+}
 /// Hold session information
 struct Session: Codable {
+    init(id: String, description: String, title: String, track: String) {
+        self.id = id
+        self.description = description
+        self.title = title
+        self.track = track
+    }
+
     let id: String
     let description: String
     let title: String
@@ -25,24 +48,6 @@ struct YearContent: Codable {
     // MARK: - Init
     init(sessions: [Session]) {
         self.sessions = sessions
-    }
-    
-    // MARK: - Codable
-    private struct SessionKey: CodingKey {
-        var stringValue: String
-        
-        var intValue: Int? { return nil}
-        
-        init?(intValue: Int) {
-            return nil
-        }
-        init?(stringValue: String) {
-            self.stringValue = stringValue
-        }
-    }
-    
-    private enum CodingKeys: String, CodingKey {
-        case title = ":title", description = ":description", track = ":track"
     }
     
     init(from decoder: Decoder) throws {
@@ -81,6 +86,45 @@ struct YearEvent: Codable {
     let year: UInt
 }
 
+
+struct SessionAlternate: Decodable {
+    let id: UInt
+    let session: Content
+
+    struct Content: Decodable {
+        let description: String
+        let title: String
+        let track: String
+
+        enum CodingKeys: String, CodingKey {
+            case title = ":title", description = ":description", track = ":track"
+
+        }
+    }
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        self.id = try container.decode(UInt.self)
+        self.session = try container.decode(Content.self)
+    }
+}
+
+
+enum Either<A:  Decodable, B: Decodable>: Decodable {
+    case left(A)
+    case right(B)
+
+    init(from decoder: Decoder) throws {
+        if let value = try? A(from: decoder) {
+            self = .left(value)
+        } else if let value = try? B(from: decoder) {
+            self = .right(value)
+        } else {
+            let context = DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "can not decode \(A.self) or \(B.self)")
+            throw DecodingError.dataCorrupted(context)
+        }
+    }
+}
 // MARK: - Operation
 struct ParseYamlOperation {
     
@@ -95,8 +139,15 @@ struct ParseYamlOperation {
         let data = try Data(contentsOf: self.sessionYaml)
         let decoder = YAMLDecoder()
         
-        let sessions = try decoder.decode(YearContent.self, from: data)
-        return YearEvent(sessions: sessions.sessions, year: self.year)
+        let eithers = try decoder.decode(Either<YearContent, [SessionAlternate]>.self, from: data)
+        let sessions: [Session]
+        switch eithers {
+        case .right(let element):
+            sessions = element.map { Session(id: "\($0.id)", description: $0.session.description, title: $0.session.title, track: $0.session.track)}
+        case .left(let element):
+            sessions = element.sessions
+        }
+        return YearEvent(sessions: sessions, year: self.year)
     }
 }
 
