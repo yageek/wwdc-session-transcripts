@@ -11,7 +11,7 @@ import Yams
 // MARK: - Decodable types
 
 /// Hold session information
-struct Session {
+struct Session: Codable {
     let id: String
     let description: String
     let title: String
@@ -19,8 +19,7 @@ struct Session {
 }
 
 // Hold Year event
-struct YearEvent: Codable {
-    
+struct YearContent: Codable {
     let sessions: [Session]
     
     // MARK: - Init
@@ -49,8 +48,7 @@ struct YearEvent: Codable {
     init(from decoder: Decoder) throws {
         // We get the top container as sessions keys
         let container = try decoder.container(keyedBy: SessionKey.self)
-        
-        
+
         let sessions = try container.allKeys.map { sessionKey -> Session in
             let subContainer = try container.nestedContainer(keyedBy: CodingKeys.self, forKey: sessionKey)
             
@@ -60,6 +58,7 @@ struct YearEvent: Codable {
             return Session(id: sessionKey.stringValue, description: description, title: title, track: track)
         }
         self.sessions = sessions
+        
     }
     
     // MARK: - Encodable
@@ -77,6 +76,11 @@ struct YearEvent: Codable {
     }
 }
 
+struct YearEvent: Codable {
+    let sessions: [Session]
+    let year: UInt
+}
+
 // MARK: - Operation
 struct ParseYamlOperation {
     
@@ -86,27 +90,13 @@ struct ParseYamlOperation {
     /// The URL to the _sessions.yaml file for the year
     let sessionYaml: URL
     
-    private func parse() throws -> [Session] {
+    func parse() throws -> YearEvent {
+        print("Decoding \(self.year)")
         let data = try Data(contentsOf: self.sessionYaml)
         let decoder = YAMLDecoder()
         
-        let sessions = try decoder.decode(YearEvent.self, from: data)
-        return sessions.sessions
-    }
-    
-    private func encode(sessions: [Session]) throws -> Data {
-        let encoder = JSONEncoder()
-        
-        let root = YearEvent(sessions: sessions)
-        let data = try encoder.encode(root)
-        return data
-    }
-    
-    /// Convert from Yaml to JSON
-    /// - Returns: The data of the converted bytes
-    func convert() throws -> Data {
-        let sessions = try self.parse()
-        let data = try encode(sessions: sessions)
-        return data
+        let sessions = try decoder.decode(YearContent.self, from: data)
+        return YearEvent(sessions: sessions.sessions, year: self.year)
     }
 }
+

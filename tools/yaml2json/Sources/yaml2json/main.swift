@@ -34,22 +34,16 @@ struct Yaml2Json: ParsableCommand {
         // All sessions yamls        
         let operations = yearsMap.map { ParseYamlOperation(year: $0.key, sessionYaml: $0.value) }
 
-        for op in operations {
+        // Retrieve all the sessions
+        let years = try operations.map { try $0.parse() }
 
-            do {
-                // Decode Yaml
-                let jsonData = try op.convert()
+        // Convert to JSON
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(years)
 
-                if let element = String(data: jsonData, encoding: .utf8) {
-                    print("Element: \(element)")
-                }
-                // Encode JSON
-
-            } catch let error {
-                print("Error year \(op.year): \(error)")
-            }
+        if let content = String(data: data, encoding: .utf8) {
+            print("Content: \(content)")
         }
-
 
     }
 }
