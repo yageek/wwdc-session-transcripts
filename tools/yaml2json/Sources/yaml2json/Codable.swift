@@ -26,8 +26,9 @@ private struct SessionKey: CodingKey {
 private enum CodingKeys: String, CodingKey {
     case title = ":title", description = ":description", track = ":track"
 }
+
 /// Hold session information
-struct Session: Codable {
+struct Session {
     init(id: String, description: String, title: String, track: String) {
         self.id = id
         self.description = description
@@ -42,7 +43,7 @@ struct Session: Codable {
 }
 
 // Hold Year event
-struct YearContent: Codable {
+struct YearContent: Decodable {
     let sessions: [Session]
     
     // MARK: - Init
@@ -63,29 +64,13 @@ struct YearContent: Codable {
             return Session(id: sessionKey.stringValue, description: description, title: title, track: track)
         }
         self.sessions = sessions
-        
-    }
-    
-    // MARK: - Encodable
-    func encode(to encoder: Encoder) throws {
-        var topContainer = encoder.container(keyedBy: SessionKey.self)
-        
-        for session in self.sessions {
-            
-            let key = SessionKey(stringValue: session.id)!
-            var sessionContainer = topContainer.nestedContainer(keyedBy: CodingKeys.self, forKey: key)
-            try sessionContainer.encode(session.title, forKey: .title)
-            try sessionContainer.encode(session.description, forKey: .description)
-            try sessionContainer.encode(session.track, forKey: .track)
-        }
     }
 }
 
-struct YearEvent: Codable {
+struct YearEvent {
     let sessions: [Session]
-    let year: UInt
+    let year: UInt    
 }
-
 
 struct SessionAlternate: Decodable {
     let id: UInt
@@ -124,6 +109,37 @@ enum Either<A:  Decodable, B: Decodable>: Decodable {
             throw DecodingError.dataCorrupted(context)
         }
     }
+}
+
+struct OutFormat: Encodable {
+    let events: [YearEvent]
+    init(events: [YearEvent]) {
+        self.events = events
+    }
+
+    enum EncodingKeys: String, CodingKey {
+        case title, description, track
+    }
+
+    // MARK: - Encodable
+    func encode(to encoder: Encoder) throws {
+        var topContainer = encoder.container(keyedBy: SessionKey.self)
+
+        for event in self.events {
+
+            let yearKey = SessionKey(stringValue: "\(event.year)")!
+            var yearContainer = topContainer.nestedContainer(keyedBy: SessionKey.self, forKey: yearKey)
+
+            for session in event.sessions {
+                let sessionKey = SessionKey(stringValue: session.id)!
+                var sessionContainer = yearContainer.nestedContainer(keyedBy: EncodingKeys.self, forKey: sessionKey)
+                try sessionContainer.encode(session.title, forKey: .title)
+                try sessionContainer.encode(session.description, forKey: .description)
+                try sessionContainer.encode(session.track, forKey: .track)
+            }
+        }
+    }
+
 }
 // MARK: - Operation
 struct ParseYamlOperation {

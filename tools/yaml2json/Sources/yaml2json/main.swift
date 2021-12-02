@@ -40,9 +40,10 @@ struct Yaml2Json: ParsableCommand {
         // Retrieve all the sessions
         let years = try operations.map { try $0.parse() }
 
+        let out = OutFormat(events: years)
         // Convert to JSON
         let encoder = JSONEncoder()
-        let data = try encoder.encode(years)
+        let data = try encoder.encode(out)
 
         if !FileManager.default.createFile(atPath: output, contents: data, attributes: nil) {
             print("Error writing file")
