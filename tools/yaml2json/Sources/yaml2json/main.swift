@@ -43,6 +43,7 @@ struct Yaml2Json: ParsableCommand {
         let out = OutFormat(events: years)
         // Convert to JSON
         let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(out)
 
         if !FileManager.default.createFile(atPath: output, contents: data, attributes: nil) {

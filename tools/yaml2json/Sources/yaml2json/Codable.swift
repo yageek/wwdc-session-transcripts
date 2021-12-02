@@ -69,7 +69,8 @@ struct YearContent: Decodable {
 
 struct YearEvent {
     let sessions: [Session]
-    let year: UInt    
+    let year: UInt
+    
 }
 
 struct SessionAlternate: Decodable {
@@ -118,7 +119,7 @@ struct OutFormat: Encodable {
     }
 
     enum EncodingKeys: String, CodingKey {
-        case title, description, track
+        case title, description, track, url
     }
 
     // MARK: - Encodable
@@ -136,10 +137,17 @@ struct OutFormat: Encodable {
                 try sessionContainer.encode(session.title, forKey: .title)
                 try sessionContainer.encode(session.description, forKey: .description)
                 try sessionContainer.encode(session.track, forKey: .track)
+
+                // We convert the session to url
+                let year = "\(event.year)"
+                let wwdcPath = year[year.index(year.endIndex, offsetBy: -2)..<year.endIndex]
+
+                let url = URL(string: "https://developer.apple.com/wwdc\(wwdcPath)/\(session.id)")
+                try sessionContainer.encode(url, forKey: .url)
             }
         }
+        
     }
-
 }
 // MARK: - Operation
 struct ParseYamlOperation {
