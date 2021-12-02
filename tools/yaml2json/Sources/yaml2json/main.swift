@@ -6,6 +6,9 @@ struct Yaml2Json: ParsableCommand {
     @Argument(help: "The root path of the sessions directory")
     var sessionsRootPath: String
 
+    @Option(name: .shortAndLong, help: "The output path")
+    var output: String
+
     mutating func run() throws {
 
         let url = URL(fileURLWithPath: sessionsRootPath)
@@ -41,10 +44,9 @@ struct Yaml2Json: ParsableCommand {
         let encoder = JSONEncoder()
         let data = try encoder.encode(years)
 
-        if let content = String(data: data, encoding: .utf8) {
-            print("Content: \(content)")
+        if !FileManager.default.createFile(atPath: output, contents: data, attributes: nil) {
+            print("Error writing file")
         }
-
     }
 }
 
